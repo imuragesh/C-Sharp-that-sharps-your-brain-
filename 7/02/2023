@@ -1,0 +1,156 @@
+dbmx fileD:\murgesh\c#\DotnNet\copmletDotnettraining\End To End Application\LoginMVCApp\LoginApp\Controllers\CustomerController.cs
+
+
+using LoginApp.DataComponents;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+
+namespace LoginApp.Controllers
+{
+    [Authorize]
+    public class HomeController : Controller
+    {
+        // GET: Home
+        public string Index()
+        {
+            if (Session["CustomerUser"] != null)
+            {
+                var cstDetails = Session["CustomerUser"] as CustomerTable;
+                return $"<h1>HomePage</h1></hr><p>Welcome come to Anonimus User {cstDetails.CustomerName}";
+            }
+            else
+            {
+                return $"<h1>HomePage</h1></hr><p>Welcome";
+            }
+        }
+    }
+}
+
+using LoginApp.DataComponents;
+using LoginApp.DataRepos;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using System.Web.Security;
+
+namespace LoginApp.Controllers
+{
+    public class CustomerController : Controller
+    {
+        [AllowAnonymous]
+        // GET: Customer
+        public ActionResult Login()
+        {
+            return View();
+
+        }
+        [HttpPost]
+
+        public ActionResult Login(string Email, string pwd)
+        {
+            var com = new UserMoudle();
+            try
+            {
+                var cst = com.ValidateUser(Email, pwd);
+                Session["CustomerUser"] = cst;
+                FormsAuthentication.SetAuthCookie(cst.CustomerEmail, false);
+                FormsAuthentication.RedirectFromLoginPage(cst.CustomerEmail, false);
+                return View();
+
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("LoginError", ex.Message);
+                return View();
+
+            }
+        }
+        public ActionResult Register()
+        {
+            return View(new CustomerTable());
+        }
+        [HttpPost]
+        public ActionResult Register(CustomerTable customer)
+        {
+            var con = new UserMoudle();
+            con.RegisterCustomer(customer);
+            return RedirectToAction("Login"); 
+        }
+    }
+
+using LoginApp.DataComponents;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+
+namespace LoginApp.DataRepos
+{
+
+    public interface IUserMoudle
+    {
+        CustomerTable ValidateUser(string emailAddress, string Password);//sign in
+        void RegisterCustomer(CustomerTable customer);//SignIn
+        void UpdateCustomer(CustomerTable customer);//Modify password
+    }
+    public class UserMoudle : IUserMoudle
+    {
+        private bool IsValidEmail( string emailAddress)
+        {
+            var cotext = new CustomerEntities();
+            var record = cotext.CustomerTables.SingleOrDefault(c => c.CustomerEmail == emailAddress);
+            return record == null;
+        }
+        public void RegisterCustomer(CustomerTable customer)
+        {
+            var context = new CustomerEntities();
+            if(IsValidEmail(customer.CustomerEmail))
+            {
+                context.CustomerTables.Add(customer);
+                context.SaveChanges();
+            }
+            else
+            {
+                throw new  Exception("Cusrtomer is already registered , plese click on forget password");
+            }
+        }
+
+        public void UpdateCustomer(CustomerTable customer)
+        {
+            var context = new CustomerEntities();
+            if(!IsValidEmail(customer.CustomerEmail))
+            {
+                var found = context.CustomerTables.SingleOrDefault(c => c.CstId == customer.CstId);
+                found.password = customer.password;
+                context.SaveChanges();
+            }
+        }
+
+        public CustomerTable ValidateUser(string emailAddress, string Password)
+        {
+            var context = new CustomerEntities();
+            var customer = context.CustomerTables.SingleOrDefault(c => c.CustomerEmail == emailAddress && c.password == Password);
+            if (customer == null)
+            {
+                throw new Exception("Login Failed");
+
+            }
+            return customer;
+        }
+    }
+}
+
+
+            
+         
+           
+    
+}
+
+
+
